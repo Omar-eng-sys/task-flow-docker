@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — DevOps Containerization Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">TaskFlow</span>
+          <span class="brand-badge">Docker Demo Stack</span>
+        </div>
+      </div>
+
+      <!-- Live Infrastructure Status Bar -->
+      <div class="infra-status-bar">
+        <div class="status-node" title="Nginx Reverse Proxy on Port 80">
+          <span class="status-dot online"></span>
+          <span class="node-name">nginx:80</span>
+        </div>
+        <span class="status-connector">→</span>
+        <div class="status-node" id="backend-node-status" title="Express REST API on Port 3000">
+          <span class="status-dot pending" id="backend-dot"></span>
+          <span class="node-name">backend:3000</span>
+        </div>
+        <span class="status-connector">→</span>
+        <div class="status-node" id="mongo-node-status" title="MongoDB on Port 27017 with Named Volume">
+          <span class="status-dot pending" id="mongo-dot"></span>
+          <span class="node-name">mongodb:27017</span>
+        </div>
+        <span class="status-connector">→</span>
+        <div class="status-node volume-node" title="Docker Named Volume: taskflow-mongo-data">
+          <svg class="vol-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+          </svg>
+          <span class="node-name">volume:data</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="nav-actions">
+        <button id="refresh-btn" class="btn btn-secondary btn-icon" title="Refresh Live Data">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+        <button id="open-create-modal-btn" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Create Task</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    <!-- Architecture Banner -->
+    <section class="arch-banner">
+      <div class="arch-banner-inner">
+        <div class="arch-title-group">
+          <div class="tech-tag">Docker Network: <code>taskflow-network</code></div>
+          <h2>Multi-Container SaaS Architecture</h2>
+          <p>Nginx proxies client traffic to the Express API, which persists state in MongoDB backed by a Docker named volume.</p>
+        </div>
+        <div class="arch-meta">
+          <div class="meta-item">
+            <span class="meta-label">CONTAINER HOSTNAME</span>
+            <span class="meta-value" id="meta-hostname">Connecting...</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">API UPTIME</span>
+            <span class="meta-value" id="meta-uptime">--</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">PERSISTENT STORAGE</span>
+            <span class="meta-value status-active">taskflow-mongo-data</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Counter Cards -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon icon-blue">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="9" x2="15" y2="9"></line>
+            <line x1="9" y1="13" x2="15" y2="13"></line>
+            <line x1="9" y1="17" x2="13" y2="17"></line>
+          </svg>
+        </div>
+        <div class="stat-details">
+          <span class="stat-label">Total Stored Tasks</span>
+          <span class="stat-number" id="stat-total">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-red">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="stat-details">
+          <span class="stat-label">High Priority</span>
+          <span class="stat-number" id="stat-high">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-amber">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div class="stat-details">
+          <span class="stat-label">In Progress</span>
+          <span class="stat-number" id="stat-progress">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon icon-green">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        </div>
+        <div class="stat-details">
+          <span class="stat-label">Completed</span>
+          <span class="stat-number" id="stat-completed">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Toolbar: Search & Filters -->
+    <section class="toolbar">
+      <div class="search-box">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search tasks by title or description..." />
+      </div>
+
+      <div class="filters-group">
+        <select id="filter-priority" class="select-input">
+          <option value="all">All Priorities</option>
+          <option value="high">High Priority</option>
+          <option value="medium">Medium Priority</option>
+          <option value="low">Low Priority</option>
+        </select>
+
+        <select id="filter-status" class="select-input">
+          <option value="all">All Statuses</option>
+          <option value="todo">To Do</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+
+        <button id="seed-demo-btn" class="btn btn-secondary" title="Seed realistic DevOps records for testing">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Seed Demo Data</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Tasks Grid / Container -->
+    <section class="tasks-section">
+      <div class="section-header">
+        <h3>Managed Tasks</h3>
+        <span class="badge-counter" id="task-counter-badge">0 tasks</span>
+      </div>
+
+      <div id="tasks-grid" class="tasks-grid">
+        <!-- Dynamic Task Cards Rendered by app.js -->
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading-state" class="state-container hidden">
+        <div class="spinner"></div>
+        <p>Connecting to backend API container...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="state-container hidden">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+        <h4>No Tasks in MongoDB</h4>
+        <p>Create your first task or click "Seed Demo Data" to demonstrate real-time database persistence.</p>
+        <button id="empty-create-btn" class="btn btn-primary">Create Your First Task</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Create Task Modal -->
+  <div id="create-modal" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>Create New Task</h3>
+          <p>This record will be sent via POST /api/tasks and stored in MongoDB.</p>
+        </div>
+        <button id="close-modal-btn" class="btn-close" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="create-task-form" class="modal-form">
+        <div class="form-group">
+          <label for="task-title">Task Title <span class="required">*</span></label>
+          <input type="text" id="task-title" required placeholder="e.g. Containerize Application" maxlength="100" />
+        </div>
+
+        <div class="form-group">
+          <label for="task-description">Description</label>
+          <textarea id="task-description" rows="3" placeholder="e.g. Configure Dockerfile, Docker Compose, and persistent named volume" maxlength="500"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="task-priority">Priority</label>
+            <select id="task-priority">
+              <option value="low">Low Priority</option>
+              <option value="medium" selected>Medium Priority</option>
+              <option value="high">High Priority</option>
+            </select>
+          </div>
+
+          <div class="form-group half">
+            <label for="task-category">Category</label>
+            <select id="task-category">
+              <option value="DevOps" selected>DevOps</option>
+              <option value="Infrastructure">Infrastructure</option>
+              <option value="Feature">Feature</option>
+              <option value="Bug">Bug</option>
+              <option value="Security">Security</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="task-status">Initial Status</label>
+          <select id="task-status">
+            <option value="todo" selected>To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancel-modal-btn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="submit-task-btn" class="btn btn-primary">
+            <span>Save to MongoDB</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <span>TaskFlow &mdash; Containerized Infrastructure Demo</span>
+      <span>Nginx &bull; Express API &bull; MongoDB 8 &bull; Docker Named Volume</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

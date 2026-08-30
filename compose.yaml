@@ -1,0 +1,81 @@
+services:
+  # ---------------------------------------------------------------------------
+  # NGINX: Reverse Proxy & Static Asset Server
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: taskflow-nginx
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - taskflow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # BACKEND: Express REST API Service
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskflow-backend
+    environment:
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/taskflow
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - taskflow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
+  # MONGODB: Persistent Document Store
+  # ---------------------------------------------------------------------------
+  mongodb:
+    image: mongo:8
+    container_name: taskflow-mongodb
+    volumes:
+      - taskflow-mongo-data:/data/db
+    networks:
+      - taskflow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+# -----------------------------------------------------------------------------
+# DOCKER NETWORKS
+# -----------------------------------------------------------------------------
+networks:
+  taskflow-network:
+    name: taskflow-network
+    driver: bridge
+
+# -----------------------------------------------------------------------------
+# DOCKER PERSISTENT VOLUMES
+# -----------------------------------------------------------------------------
+volumes:
+  taskflow-mongo-data:
+    name: taskflow-mongo-data
+    driver: local
